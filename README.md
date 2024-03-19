@@ -1,1 +1,1 @@
-Generates an .ics file from EduLink timetable 
+Generates an .ics file from EduLink timetables
