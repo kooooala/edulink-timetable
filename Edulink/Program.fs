@@ -2,123 +2,62 @@
 module Edulink.Program
 
 open System
-open System.Net.Http
-open System.Net.Http.Headers
-open System.Text
-open Newtonsoft.Json
-open Newtonsoft.Json.Linq
-
-let baseUrl = "https://www14.edulinkone.com/api/?method="
-
-let userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:123.0) Gecko/20100101 Firefox/123.0"
-
-
-let uuid () =
-    Guid.NewGuid().ToString()
-
-let createRequestWithBaseUrl (method: string) (parameters: string) (url: string) =
-    let request = new HttpRequestMessage ()
-    request.Method <- HttpMethod.Post
-    request.RequestUri <- Uri (url + method)
-    request.Headers.Add ("X-API-Method", method)
-    request.Headers.UserAgent.ParseAdd userAgent
+open System.Security
+open Edulink
+open Calendar
     
-    let content = $$"""{
-    "jsonrpc": "2.0",
-    "method": "{{method}}",
-    "params": {
-        {{parameters}}   
-    },
-    "uuid": "{{uuid ()}}",
-    "id": "1"
-}"""
+let bind f opt =
+    match opt with
+    | Success x -> f x
+    | Failure failure -> Failure failure
     
-    request.Content <- new StringContent (content, Encoding.UTF8, "application/json")
+let getPassword () =
+    let mutable password = String.Empty
     
-    request
-
-let createRequest method parameters =
-    createRequestWithBaseUrl method parameters baseUrl
-
-let await =
-    Async.AwaitTask >> Async.RunSynchronously
-
-let sendRequest method parameters (client: HttpClient) =
-    let response =
-        createRequest method parameters
-        |> client.Send
+    let mutable i = Console.ReadKey true
+    
+    if (i.Key = ConsoleKey.Backspace && password.Length > 0) then
+            Console.Write "\b \b"
+            password <- password[0..(password.Length - 2)]
+        elif not (Char.IsControl(i.KeyChar)) then
+            Console.Write "*"
+            password <- password + string i.KeyChar
+    
+    while i.Key <> ConsoleKey.Enter do
+        i <- Console.ReadKey true
         
-    await (response.Content.ReadAsStringAsync())
-
-let sendAuthRequest method parameters token (client: HttpClient) =
-    let request = createRequest method parameters
-    request.Headers.Authorization <- AuthenticationHeaderValue ("Bearer", token)
-    let response = client.Send request
-    
-    await (response.Content.ReadAsStringAsync())
-
-let schoolId code =
-    use client = new HttpClient ()
-    
-    let parameters = $"""
-        "code": "{code}"
-        """
-    
-    let response =
-        createRequestWithBaseUrl "School.FromCode" parameters "https://provisioning.edulinkone.com/?method="
-        |> client.Send
-    
-    let content = await (response.Content.ReadAsStringAsync()) |> JObject.Parse
-        
-    let success = content["result"].["success"].ToObject<bool>()
-    
-    if success then
-        Some (content["result"].["school"].["school_id"].ToObject<int>())
-    else
-        None
-    
-let schoolName id =
-    use client = new HttpClient ()
-    
-    let parameters = $"""
-    "establishment_id": "{id}",
-    "from_app": false
-    """
-    
-    let response =
-        sendRequest "EduLink.SchoolDetails" parameters client
-        |> JObject.Parse
-        
-    response["result"].["establishment"].["name"].ToObject<string>()
-    
-let login username password : Auth =
-    use client = new HttpClient ()
-    
-    let parameters = $$""""from_app": false,
-        "ui_info": {
-            "format": 2,
-            "version": "5.0.70",
-            "git_sha": "9c82c853dd440306800f155f15e876823e006490"
-        },
-        "fcm_token_old": "none",
-        "device": {},
-        "username": "{{username}}",
-        "password": "{{password}}",
-        "establishment_id": 46"""
-       
-    let content =
-        sendRequest "EduLink.Login" parameters client
-        |> JObject.Parse
-        
-    content["result"].["authtoken"].ToObject<string>(), content["result"].["user"].["id"].ToObject<string>()
+        if (i.Key = ConsoleKey.Backspace && password.Length > 0) then
+            Console.Write "\b \b"
+            password <- password[0..(password.Length - 2)]
+        elif not (Char.IsControl(i.KeyChar)) then
+            Console.Write "*"
+            password <- password + string i.KeyChar
+                
+    Console.WriteLine ()
+    password            
     
 [<EntryPoint>]
 let main _ =
-    printfn $"""{login "19eho" "hqijbmcohvfvndqbbuuond20080407()hqijbmcohvfvndqbbuuond20080407()"}"""
+    printf "School: "
+    let school = Console.ReadLine()
     
-    schoolId "sn14je"
-    |> function
-        | Some id -> printfn $"Name: {schoolName id}"
-        | _ -> ()
+    printf "Username: "
+    let username = Console.ReadLine()
+    printf "Password: "
+    let password = getPassword () 
+    
+    let result =
+        schoolId school
+        |> bind (login username password)
+        |> bind timetable
+        
+    match result with
+    | Success timetable ->
+        printf "Output file name (Press enter to use default): "
+        let fileName = Console.ReadLine()
+        writeFile timetable (
+        (if fileName = "" then $"Timetable-{DateTime.Now.ToShortDateString().Replace('/', '-')}"
+        else fileName) + ".ics")
+    | Failure error -> eprintfn $"Error: {error}"
         
     0

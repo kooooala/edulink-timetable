@@ -7,7 +7,9 @@
 
     <ItemGroup>
         <Compile Include="Types.fs" />
-        <Compile Include="Program.fs"/>
+        <Compile Include="Calendar.fs" />
+        <Compile Include="Edulink.fs" />
+        <Compile Include="Program.fs" />
     </ItemGroup>
 
     <ItemGroup>
