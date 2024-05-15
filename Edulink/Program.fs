@@ -2,7 +2,6 @@
 module Edulink.Program
 
 open System
-open System.Security
 open Edulink
 open Calendar
     
@@ -44,12 +43,19 @@ let main _ =
     printf "Username: "
     let username = Console.ReadLine()
     printf "Password: "
-    let password = getPassword () 
+    let password = getPassword ()
     
     let result =
         schoolId school
         |> bind (login username password)
         |> bind timetable
+        
+    let exams =
+        schoolId school
+        |> bind (login username password)
+        |> bind exams
+        
+    printfn $"{exams}"
         
     match result with
     | Success timetable ->
@@ -57,6 +63,15 @@ let main _ =
         let fileName = Console.ReadLine()
         writeFile timetable (
         (if fileName = "" then $"Timetable-{DateTime.Now.ToShortDateString().Replace('/', '-')}"
+        else fileName) + ".ics")
+    | Failure error -> eprintfn $"Error: {error}"
+        
+    match exams with
+    | Success exams ->
+        printf "Exam timetable file name (Press enter to use default): "
+        let fileName = Console.ReadLine()
+        writeExams exams (
+        (if fileName = "" then $"ExamTimetable-{DateTime.Now.ToShortDateString().Replace('/', '-')}"
         else fileName) + ".ics")
     | Failure error -> eprintfn $"Error: {error}"
         

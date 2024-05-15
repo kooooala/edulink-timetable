@@ -2,7 +2,9 @@
 module Edulink.Types
 
 open System
+open System.Text.RegularExpressions
 open Newtonsoft.Json
+open Newtonsoft.Json.Linq
 
 type Period = {
     Id: int
@@ -49,8 +51,41 @@ type Week = {
 
 type Weeks = Week list
 
+type TimeSpanConverter() =
+    inherit JsonConverter()
+    
+    override _.WriteJson (_, _, _) =
+         raise (NotImplementedException ())
+
+    override this.ReadJson (reader, objectType, existingValue, serializer) =
+        let jsonObject = reader.Value.ToString()
+        
+        let regex = Regex ("(?<hour>[0-9]+)hr (?<minutes>0?[0-9]|[1-5][0-9])m", RegexOptions.IgnoreCase)
+        let result = regex.Match(jsonObject)
+        let hour = result.Groups["hour"].Value |> int
+        let minutes = result.Groups["minutes"].Value |> int
+        
+        TimeSpan.FromMinutes (hour * 60 + minutes |> float)
+        
+        
+    override this.CanConvert (objectType) =
+        true
+        
+type Exam = {
+    DateTime: DateTime
+    Board: string
+    Level: string
+    Code: string
+    Title: string
+    Room: string
+    Seat: string
+    [<JsonConverter(typeof<TimeSpanConverter>)>]
+    Duration: TimeSpan
+}
+
 type Auth = string * string
 
 type Result<'a> =
     | Success of 'a 
     | Failure of string
+    

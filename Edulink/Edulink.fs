@@ -135,3 +135,25 @@ let timetable (auth: Auth) : Weeks Result =
         |> List.map (fun i -> i.ToObject<Week>()))
     else
         Failure (response["result"].["error"].ToObject<string>())
+        
+let exams (auth: Auth) : Exam list Result=
+    use client = new HttpClient ()
+    
+    let date = DateTime.Now
+    let parameters = $"""
+    "date": "{date.Year}-%02d{date.Month}-{date.Day}",
+    "learner_id": "{snd auth}"
+    """
+    
+    let response = 
+        sendAuthRequest "EduLink.Exams" parameters (fst auth) client
+        |> JObject.Parse
+        
+    let success = response["result"].["success"].ToObject<bool>()
+        
+    if success then
+        Success (response["result"].["timetable"].Children()
+        |> List.ofSeq
+        |> List.map (fun i -> i.ToObject<Exam>()))
+    else
+        Failure (response["result"].["error"].ToObject<string>())
