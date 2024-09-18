@@ -119,7 +119,7 @@ let timetable (auth: Auth) : Weeks Result =
     
     let date = DateTime.Now
     let parameters = $"""
-    "date": "{date.Year}-%02d{date.Month}-{date.Day}",
+    "date": "{date.Year}-%02d{date.Month}-%02d{date.Day}",
     "learner_id": "{snd auth}"
     """
     
@@ -141,7 +141,7 @@ let exams (auth: Auth) : Exam list Result=
     
     let date = DateTime.Now
     let parameters = $"""
-    "date": "{date.Year}-%02d{date.Month}-{date.Day}",
+    "date": "{date.Year}-%02d{date.Month}-%02d{date.Day}",
     "learner_id": "{snd auth}"
     """
     
